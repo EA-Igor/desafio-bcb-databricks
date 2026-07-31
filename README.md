@@ -163,6 +163,16 @@ databricks bundle deploy -t dev
 databricks bundle run -t dev desafio_bcb_pipeline
 ```
 
+Evidência de validação do Bundle:
+
+```text
+Name: desafio_bcb_databricks
+Target: dev
+Validation OK!
+```
+
+![Databricks Asset Bundle validado via CLI](docs/images/bundle-validate-success.jpeg)
+
 Os parâmetros padrão do Bundle são:
 
 ```text
