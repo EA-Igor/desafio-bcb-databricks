@@ -238,21 +238,26 @@ O job falha explicitamente se qualquer regra abaixo for violada:
 - Chaves de negócio duplicadas em Bronze, Silver ou Gold.
 - Gold com quantidade diferente de 60 meses para o período 2020-2024.
 
-## Evidência de idempotência
+## Evidência de execução e idempotência
 
-Execute o workflow duas vezes no Databricks. Depois rode o notebook:
+O Workflow `desafio-bcb-bronze-silver-gold` foi executado duas vezes com
+sucesso no Databricks, contendo as tasks `bronze`, `silver`, `gold` e
+`idempotency_report`.
+
+![Workflow executado duas vezes com sucesso](docs/images/workflow-runs-success.jpeg)
+
+A task `idempotency_report` foi executada com sucesso após a segunda execução do
+Workflow e confirmou ausência de duplicidade nas chaves de negócio das tabelas:
 
 ```text
-notebooks/04_idempotency_report.py
+`desafio_bcb`.`default`.`bronze_selic_raw`: rows=1255, duplicate_key_count=0
+`desafio_bcb`.`default`.`bronze_ipca_raw`: rows=60, duplicate_key_count=0
+`desafio_bcb`.`default`.`silver_selic`: rows=1255, duplicate_key_count=0
+`desafio_bcb`.`default`.`silver_ipca`: rows=60, duplicate_key_count=0
+`desafio_bcb`.`default`.`gold_monthly_real_interest`: rows=60, duplicate_key_count=0
 ```
 
-ou a consulta:
-
-```text
-sql/idempotency_checks.sql
-```
-
-O resultado esperado é `duplicate_key_count = 0` para todas as tabelas.
+![Relatório de idempotência com duplicidade zero](docs/images/idempotency-report-success.jpeg)
 
 ## Estratégia de backfill
 
