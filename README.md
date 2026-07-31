@@ -180,6 +180,42 @@ sql/idempotency_checks.sql
 
 O resultado esperado é `duplicate_key_count = 0` para todas as tabelas.
 
+## Estratégia de backfill
+
+O pipeline foi desenhado para permitir reprocessamentos históricos sem duplicar
+registros. As camadas Bronze, Silver e Gold usam chaves de negócio estáveis e
+cargas idempotentes por `MERGE`, então o mesmo intervalo pode ser carregado mais
+de uma vez com o mesmo resultado final.
+
+Para executar um backfill, o fluxo recomendado é:
+
+1. Gerar novamente os arquivos brutos pelo script local, ajustando o período das
+   URLs da API do BCB quando for necessário reprocessar outro intervalo.
+2. Fazer upload dos arquivos para o Volume do Unity Catalog.
+3. Executar o Workflow completo no Databricks.
+4. Validar o resultado com o relatório de idempotência.
+
+Para backfills pontuais dentro do período atual, os arquivos podem substituir os
+arquivos existentes no Volume:
+
+```text
+/Volumes/desafio_bcb/default/raw_files/selic.json
+/Volumes/desafio_bcb/default/raw_files/ipca.json
+```
+
+Para backfills maiores ou recorrentes, a recomendação é versionar os arquivos
+brutos por intervalo ou data de extração, por exemplo:
+
+```text
+/Volumes/desafio_bcb/default/raw_files/backfill_2020_2024/selic.json
+/Volumes/desafio_bcb/default/raw_files/backfill_2020_2024/ipca.json
+```
+
+Nesse cenário, o parâmetro `raw_volume_path` do Workflow pode apontar para o
+subdiretório do backfill. A Bronze preserva o `source_file`, mantendo
+rastreabilidade sobre qual arquivo originou cada registro. A Silver usa
+`series_name` e `reference_date` como chave de negócio, e a Gold usa
+`reference_month`, evitando duplicações mesmo em reexecuções.
 ## Versionamento
 
 O projeto deve ser versionado com Git:
