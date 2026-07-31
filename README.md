@@ -216,13 +216,3 @@ subdiretório do backfill. A Bronze preserva o `source_file`, mantendo
 rastreabilidade sobre qual arquivo originou cada registro. A Silver usa
 `series_name` e `reference_date` como chave de negócio, e a Gold usa
 `reference_month`, evitando duplicações mesmo em reexecuções.
-## Versionamento
-
-O projeto deve ser versionado com Git:
-
-```powershell
-git init
-git add .
-git commit -m "Initial Databricks BCB pipeline"
-```
-
