@@ -1,7 +1,7 @@
 resources:
   jobs:
     desafio_bcb_pipeline:
-      name: desafio-bcb-bronze-silver-gold-${bundle.target}
+      name: desafio-bcb-bronze-silver-gold
       description: >
         Bronze/Silver/Gold pipeline for BCB SELIC and IPCA series.
       queue:

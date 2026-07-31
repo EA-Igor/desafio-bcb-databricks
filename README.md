@@ -114,7 +114,7 @@ databricks.yml
 resources/desafio_bcb_job.yml
 ```
 
-O Bundle cria o job `desafio-bcb-bronze-silver-gold-dev` com as quatro tasks do
+O Bundle cria o job `desafio-bcb-bronze-silver-gold` com as quatro tasks do
 pipeline em compute serverless. Antes de executar, configure a Databricks CLI no
 workspace desejado:
 
