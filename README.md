@@ -30,6 +30,8 @@ desafio_bcb.default
 ```text
 extract/
   extract_bcb.py
+scripts/
+  upload_to_volume.py
 src/desafio_bcb/
   bronze.py
   silver.py
@@ -85,6 +87,37 @@ O caminho esperado pelo pipeline é:
 ```text
 /Volumes/desafio_bcb/default/raw_files
 ```
+
+### Automacao via Databricks CLI
+
+Como alternativa ao upload manual pela UI, o projeto inclui um script que usa a
+Databricks CLI autenticada para enviar os arquivos ao Volume:
+
+```powershell
+python scripts/upload_to_volume.py
+```
+
+O script valida que `selic.json` e `ipca.json` existem localmente, que os JSONs
+nao estao vazios, cria o diretorio de destino no Volume e executa o upload com
+sobrescrita habilitada.
+
+Pre-requisito:
+
+```powershell
+databricks auth login --host https://<seu-workspace>
+```
+
+Parametros uteis:
+
+```powershell
+python scripts/upload_to_volume.py --dry-run
+python scripts/upload_to_volume.py --profile <profile-name>
+python scripts/upload_to_volume.py --volume-path /Volumes/desafio_bcb/default/raw_files
+python scripts/upload_to_volume.py --cli-path "C:\caminho\para\databricks.exe"
+```
+
+Internamente, o script converte o caminho `/Volumes/...` para o formato exigido
+pela CLI, `dbfs:/Volumes/...`.
 
 ## Pipeline
 
