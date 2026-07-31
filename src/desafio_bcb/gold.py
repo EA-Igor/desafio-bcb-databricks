@@ -78,10 +78,15 @@ def _build_gold_dataframe(spark, config: PipelineConfig):
         )
     )
 
-    window_12m = Window.orderBy("reference_month").rowsBetween(-11, 0)
+    window_12m = (
+        Window.partitionBy("window_partition")
+        .orderBy("reference_month")
+        .rowsBetween(-11, 0)
+    )
 
     return (
-        monthly.withColumn(
+        monthly.withColumn("window_partition", f.lit("monthly_real_interest"))
+        .withColumn(
             "real_interest_accumulated_12m_pct",
             (
                 f.exp(
@@ -155,4 +160,3 @@ def _merge_gold(spark, gold_df, target_table: str) -> None:
         )
         """
     )
-
