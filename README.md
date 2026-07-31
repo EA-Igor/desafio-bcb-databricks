@@ -1,0 +1,192 @@
+# Desafio BCB - SELIC, IPCA e juro real
+
+Pipeline Databricks para montar uma base analítica com duas séries públicas do
+SGS do Banco Central do Brasil:
+
+- SELIC diária: série 11
+- IPCA mensal: série 433
+
+O período usado no desafio é de `01/01/2020` a `31/12/2024`.
+
+## Arquitetura
+
+O projeto usa três camadas no Unity Catalog:
+
+- Bronze: ingestão idempotente dos arquivos brutos `selic.json` e `ipca.json`
+  a partir do Volume `/Volumes/desafio_bcb/default/raw_files`.
+- Silver: padronização de datas, tipagem de valores numéricos e carga
+  idempotente por `MERGE`.
+- Gold: tabela mensal consolidada com SELIC média do mês, IPCA do mês, juro
+  real mensal e juro real acumulado em 12 meses.
+
+As tabelas são criadas no catálogo/schema:
+
+```text
+desafio_bcb.default
+```
+
+## Estrutura
+
+```text
+extract/
+  extract_bcb.py
+src/desafio_bcb/
+  bronze.py
+  silver.py
+  gold.py
+  quality.py
+  idempotency.py
+notebooks/
+  01_bronze.py
+  02_silver.py
+  03_gold.py
+  04_idempotency_report.py
+databricks/
+  workflow.json
+sql/
+  idempotency_checks.sql
+```
+
+## Etapa 0 - Extração local
+
+O Databricks Free Edition pode bloquear chamadas HTTP diretas para o Banco
+Central. Por isso, a extração roda localmente:
+
+```powershell
+python extract/extract_bcb.py --output-dir data/raw
+```
+
+O script baixa os arquivos:
+
+```text
+data/raw/selic.json
+data/raw/ipca.json
+```
+
+Ele trata erro de rede, aplica retentativas com backoff exponencial e falha de
+forma explícita se a API não responder ou devolver payload vazio/malformado.
+
+## Upload para o Volume
+
+No Databricks:
+
+1. Acesse `Catalog`.
+2. Use o catálogo `desafio_bcb` e o schema `default`.
+3. Crie ou selecione o Volume `raw_files`.
+4. Faça upload dos arquivos:
+   - `data/raw/selic.json`
+   - `data/raw/ipca.json`
+
+O caminho esperado pelo pipeline é:
+
+```text
+/Volumes/desafio_bcb/default/raw_files
+```
+
+## Pipeline
+
+O workflow está definido em:
+
+```text
+databricks/workflow.json
+```
+
+Ele executa as tarefas nesta ordem:
+
+1. `bronze`
+2. `silver`
+3. `gold`
+4. `idempotency_report`
+
+Os notebooks em `notebooks/` são apenas entrypoints. A lógica de negócio fica
+nos módulos em `src/desafio_bcb/`.
+
+## Chaves de negócio e idempotência
+
+Bronze:
+
+- `bronze_selic_raw`: `series_name`, `data`, `source_file`
+- `bronze_ipca_raw`: `series_name`, `data`, `source_file`
+
+Silver:
+
+- `silver_selic`: `series_name`, `reference_date`
+- `silver_ipca`: `series_name`, `reference_date`
+
+Gold:
+
+- `gold_monthly_real_interest`: `reference_month`
+
+Todas as cargas usam `MERGE`. Rodar o workflow duas vezes não duplica registros.
+
+## Grão das tabelas
+
+Bronze:
+
+- Um registro por observação bruta da série no arquivo de origem.
+- Datas e valores são preservados como `STRING`.
+
+Silver:
+
+- SELIC: um registro por dia da série SELIC.
+- IPCA: um registro por mês da série IPCA.
+- Datas são convertidas para `DATE` e valores para `DECIMAL(18,8)`.
+
+Gold:
+
+- Um registro por mês.
+- A tabela contém apenas meses que possuem SELIC e IPCA.
+
+## Métricas da Gold
+
+Tabela:
+
+```text
+desafio_bcb.default.gold_monthly_real_interest
+```
+
+Colunas:
+
+- `reference_month`: primeiro dia do mês.
+- `selic_avg_month_pct`: média mensal da SELIC diária.
+- `ipca_month_pct`: IPCA do mês.
+- `real_interest_month_pct`: juro real mensal pela fórmula de Fisher:
+  `((1 + selic / 100) / (1 + ipca / 100) - 1) * 100`.
+- `real_interest_accumulated_12m_pct`: acumulação móvel de 12 meses do juro
+  real mensal.
+
+## Qualidade de dados
+
+O job falha explicitamente se qualquer regra abaixo for violada:
+
+- Dataset de origem vazio.
+- Campos obrigatórios nulos após leitura ou tipagem.
+- Chaves de negócio duplicadas em Bronze, Silver ou Gold.
+- Gold com quantidade diferente de 60 meses para o período 2020-2024.
+
+## Evidência de idempotência
+
+Execute o workflow duas vezes no Databricks. Depois rode o notebook:
+
+```text
+notebooks/04_idempotency_report.py
+```
+
+ou a consulta:
+
+```text
+sql/idempotency_checks.sql
+```
+
+O resultado esperado é `duplicate_key_count = 0` para todas as tabelas.
+
+## Versionamento
+
+O projeto deve ser versionado com Git:
+
+```powershell
+git init
+git add .
+git commit -m "Initial Databricks BCB pipeline"
+```
+
