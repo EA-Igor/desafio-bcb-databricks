@@ -43,6 +43,9 @@ notebooks/
   04_idempotency_report.py
 databricks/
   workflow.json
+resources/
+  desafio_bcb_job.yml
+databricks.yml
 sql/
   idempotency_checks.sql
 ```
@@ -100,6 +103,44 @@ Ele executa as tarefas nesta ordem:
 
 Os notebooks em `notebooks/` são apenas entrypoints. A lógica de negócio fica
 nos módulos em `src/desafio_bcb/`.
+
+## Deploy com Databricks Asset Bundle
+
+O projeto também possui um Databricks Asset Bundle para deploy do Workflow como
+código:
+
+```text
+databricks.yml
+resources/desafio_bcb_job.yml
+```
+
+O Bundle cria o job `desafio-bcb-bronze-silver-gold-dev` com as quatro tasks do
+pipeline em compute serverless. Antes de executar, configure a Databricks CLI no
+workspace desejado:
+
+```powershell
+databricks auth login --host https://<seu-workspace>
+```
+
+Valide, faça o deploy e execute o job:
+
+```powershell
+databricks bundle validate -t dev
+databricks bundle deploy -t dev
+databricks bundle run -t dev desafio_bcb_pipeline
+```
+
+Os parâmetros padrão do Bundle são:
+
+```text
+catalog = desafio_bcb
+schema = default
+raw_volume_path = /Volumes/desafio_bcb/default/raw_files
+```
+
+Para executar um backfill em outro subdiretório do Volume, informe outro
+`raw_volume_path` na execução do job ou ajuste a variável correspondente em
+`databricks.yml`.
 
 ## Chaves de negócio e idempotência
 

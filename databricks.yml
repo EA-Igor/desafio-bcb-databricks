@@ -1,0 +1,27 @@
+bundle:
+  name: desafio_bcb_databricks
+
+include:
+  - resources/*.yml
+
+sync:
+  exclude:
+    - Instru*.txt
+    - data/raw/*.json
+
+variables:
+  catalog:
+    description: Unity Catalog catalog used by the pipeline.
+    default: desafio_bcb
+  schema:
+    description: Unity Catalog schema used by the pipeline.
+    default: default
+  raw_volume_path:
+    description: Unity Catalog Volume path containing selic.json and ipca.json.
+    default: /Volumes/desafio_bcb/default/raw_files
+
+targets:
+  dev:
+    mode: development
+    default: true
+
